@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import Node from './Node/Node';
 import {dijkstra, getNodesInShortestPathOrder} from '../algorithms/dijkstra';
+import {BFS, getNodesInShortestPathOrderBFS} from '../algorithms/BFS';
 
 import './PathfindingVisualizer.css';
 
@@ -19,7 +20,9 @@ export default class PathfindingVisualizer extends Component {
       grid: [],
       mouseIsPressed: false,
       startNodePressed: false,
-      finishNodePressed: false
+      finishNodePressed: false,
+      visualFinished: false,
+      visualInProgress: false
     };
   }
 
@@ -31,6 +34,7 @@ export default class PathfindingVisualizer extends Component {
 
   //set up the wall with the mouse click.
   handleMouseDown(row, col) {
+    if(this.state.visualInProgress) return;
     if(row === START_NODE_ROW && col === START_NODE_COL){
       this.setState({startNodePressed: true, mouseIsPressed: true});
     } else if(row === FINISH_NODE_ROW && col === FINISH_NODE_COL){
@@ -43,6 +47,7 @@ export default class PathfindingVisualizer extends Component {
 
   //dragging feature
   handleMouseEnter(row, col) {
+    if(this.state.visualInProgress) return;
     if (!this.state.mouseIsPressed) return;
     if (this.state.startNodePressed === true){
       const newGrid = getNewGridWithStartNode(this.state.grid, row, col);
@@ -110,9 +115,18 @@ export default class PathfindingVisualizer extends Component {
           'node node-shortest-path';
       }, 50 * i);
     }
+    this.setState({visualInProgress: false});
+    this.setState({visualFinished: true});
   }
 
   visualizeDijkstra() {
+    if(this.state.visualInProgress === true) return;
+    if(this.state.visualFinished){
+      //reset
+      this.reset(true);
+      this.setState({visualFinished: false});
+    }
+    this.setState({visualInProgress: true});
     const {grid} = this.state;
     const startNode = grid[START_NODE_ROW][START_NODE_COL];
     const finishNode = grid[FINISH_NODE_ROW][FINISH_NODE_COL];
@@ -121,6 +135,50 @@ export default class PathfindingVisualizer extends Component {
     this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
   }
 
+  visualizeBFS(){
+    if(this.state.visualInProgress === true) return;
+    if(this.state.visualFinished){
+      //reset
+      this.reset(true);
+      this.setState({visualFinished: false});
+    }
+    this.setState({visualInProgress: true});
+    const {grid} = this.state;
+    const startNode = grid[START_NODE_ROW][START_NODE_COL];
+    const finishNode = grid[FINISH_NODE_ROW][FINISH_NODE_COL];
+    const visitedNodesInOrder = BFS(grid, startNode, finishNode);
+    const nodesInShortestPathOrderBFS = getNodesInShortestPathOrderBFS(finishNode);
+    this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrderBFS);
+  }
+  //reset the grid
+  reset(withWall){
+    if(withWall){
+      for (const row of this.state.grid) {
+        for (const node of row) {
+          node.isVisited = false;
+          node.previousNode = null;
+          node.distance = Infinity;
+          if(!node.isWall && !node.isStart && !node.isFinish){
+            document.getElementById(`node-${node.row}-${node.col}`).className =
+              'node node';
+          }
+        }
+      }
+    }else{
+      for (const row of this.state.grid) {
+        for (const node of row) {
+          node.isVisited = false;
+          node.previousNode = null;
+          node.distance = Infinity;
+          node.isWall = false;
+          if(!node.isStart && !node.isFinish){
+            document.getElementById(`node-${node.row}-${node.col}`).className =
+              'node node';
+          }
+        }
+      }
+    }
+  }
   render() {
     const {grid, mouseIsPressed} = this.state;
 
@@ -128,6 +186,15 @@ export default class PathfindingVisualizer extends Component {
       <>
         <button onClick={() => this.visualizeDijkstra()}>
           Visualize Dijkstra's Algorithm
+        </button>
+        <button onClick={() => this.visualizeBFS()}>
+          Visualize BFS Algorithm
+        </button>
+        <button onClick={() => this.reset(true)}>
+          Reset Board w/ Walls
+        </button>
+        <button onClick={() => this.reset(false)}>
+          Reset Everything
         </button>
         <div className="grid">
           {grid.map((row, rowIdx) => {
